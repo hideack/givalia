@@ -17,6 +17,7 @@ module Givalia
 
         @@ts = Rinda::TupleSpace.new
         @@jobSchedules = Hash.new 
+        @@jobKey = Hash.new
 
         def initialize(argv)
             @options = Options.instance 
@@ -65,23 +66,28 @@ module Givalia
                             tmp = Givalia::Server.parseCommand(data)
 
                             action = tmp['action']
-                            params = tmp['job']
+                            passjob = tmp['job']
 
                         rescue
                             @@logger.info("[server] received for invalid json parameters")
-                            send_data(Givalia::Server.generateResponse(false, 'invalid json parameters.'))
+                            send_data(Givalia::Server.generateResponse(false, 'invalid json parameters'))
                             return
                         end
 
-                        @@logger.info("[server] action:#{action} / module:#{params['module']}")
+                        @@logger.info("[server] action:#{action} / module:#{passjob['module']}")
 
                         case action
                         when "enq"
-                            waketime = (Time.now + params['time']).to_i
+                            waketime = (Time.now + passjob['time']).to_i
 
                             job = Givalia::Job.new
-                            job.module = params['module']
-                            job.params = params['params']
+                            job.module = passjob['module']
+                            job.params = passjob['params']
+
+                            if !passjob['key'].nil?
+                                job.key = passjob['key']
+                                @@jobKey[passjob['key']] = waketime
+                            end
 
                             if @@jobSchedules.has_key?(waketime)
                                 @@jobSchedules[waketime] << job 
@@ -90,6 +96,61 @@ module Givalia
                             end
 
                             send_data(Givalia::Server.generateResponse(true, 'enque successfull.'))
+
+                        when "stat"
+                            jobstatus = false 
+
+                            if !passjob['key'].nil?
+                                if @@jobKey.has_key?(passjob['key'])
+                                    jobstatus = true
+                                end
+                            elsif !passjob['id'].nil?
+                                if @@jobKey.has_key?(passjob['id'])
+                                    jobstatus = true
+                                end
+                            end
+
+                            res = {:que => jobstatus}
+
+                            if jobstatus
+                                res[:timeleft] = @@jobKey[passjob['key']] - Time.now.to_i
+                            end
+
+                            send_data(Givalia::Server.generateResponse(true, res))
+
+                        when "cancel", "ext"
+                            if !@@jobKey.has_key?(passjob['key'])
+                                send_data(Givalia::Server.generateResponse(false, 'Key was not found.'))
+                                return
+                            end
+
+                            quetime = @@jobKey[passjob['key']]
+                            jobs = @@jobSchedules[quetime]
+
+                            matchjobs = jobs.select{|job|
+                                job.key == passjob['key']
+                            }
+
+                            @@jobSchedules[quetime].delete_if{|job| job.key == passjob['key']}
+
+                            if action == "ext"
+                                exttime = quetime + passjob['time']
+
+                                matchjobs.each{|job|
+                                    if @@jobSchedules.has_key?(exttime)
+                                        @@jobSchedules[exttime] << job 
+                                    else
+                                        @@jobSchedules[exttime] = [job]
+                                    end
+                                }
+                                send_data(Givalia::Server.generateResponse(true, 'Extend successfull.'))
+
+                            else
+                                @@jobKey.delete(passjob['key'])
+                                send_data(Givalia::Server.generateResponse(true, 'Cancel successfull.'))
+                            end
+
+
                         else
                             send_data(Givalia::Server.generateResponse(false, 'Invalid command.'))
                         end
@@ -107,9 +168,16 @@ module Givalia
                     waketime = Time.now.to_i
                     if @@jobSchedules.has_key?(waketime)
                         jobs = @@jobSchedules[waketime]
-                        @@ts.write(["worker", jobs])
 
                         @@jobSchedules.delete(waketime)
+
+                        jobs.each{|job|
+                            if !job.key.nil?
+                                @@jobKey.delete(job.key)
+                            end
+                        }
+                        
+                        @@ts.write(["worker", jobs])
                     end
                 end
 
@@ -152,10 +220,27 @@ module Givalia
                     raise "ENQ command needs parameters"
                 end
 
-                decJson
+            when "stat"
+                if decJson['job']['key'].nil?
+                    raise "STAT command needs parameters"
+                end
+
+            when "cancel"
+                if decJson['job']['key'].nil? and decJson['job']['id'].nil?
+                    raise "CANCEL command needs parameters"
+                end
+
+            when "ext"
+                if (decJson['job']['key'].nil? and decJson['job']['id'].nil?) or decJson['job']['time'].nil?
+                    raise "EXT command needs parameters"
+                end
+
             else
                 raise "No definition action called."
+                return
             end
+            
+            decJson
         end
 
         def Server.generateResponse(resFlg, resMsg)
