@@ -74,8 +74,14 @@ module Givalia
                             return
                         end
 
-                        @@logger.info("[server] action:#{action} / module:#{passjob['module']}")
+                        # Logging
+                        if passjob['module'].nil?
+                            @@logger.info("[server] action:#{action} / module:#{passjob['module']}")
+                        else
+                            @@logger.info("[server] action:#{action}")
+                        end
 
+                        # Action parser
                         case action
                         when "enq"
                             waketime = (Time.now + passjob['time']).to_i
