@@ -22,7 +22,7 @@ Givalia server:
 Givalia worker:
 
     $ cd bin
-    $ ./givalia_worker -m [Givalia server host name] -w [Givalia worker server port] 
+    $ ./givalia_worker -m [Givalia server host name] -w [Givalia worker server port] -n [Worker name]
 
  * -h でUsageが表示されます。
  * サーバはメッセージ受信用に1ポート, ワーカー間の通信用に1ポート使用します。
@@ -33,7 +33,44 @@ Givalia worker:
   * -dオプションを付与してサーバおよび、ワーカーを起動した場合、起動直後にデーモンへ割り当てられたPIDが標準出力されます。
  * 現状、サーバが行うキューは揮発します。Givaliaサーバが停止した場合、キューされていたメッセージは破棄されます。
 
-Usage (enque)
+Que Commands
+-------
+メッセージキューに格納するにはクライアントからサーバーに対して定義されたコマンドを実行します。
+Givaliaは以下のコマンドをメッセージコマンドとして備えます。
+
+### enq
+ * 概要
+  * メッセージキューにメッセージを登録します。
+
+ * パラメータ一覧
+  * time
+  * module
+  * params
+  * key
+  * target_worker
+
+### stat
+ * 概要
+  * メッセージキューに格納したメッセージの状態を確認します。
+ * パラメータ一覧
+  * key
+
+### cancel
+ * 概要
+  * メッセージキューに格納したメッセージを破棄します。
+ * パラメータ一覧
+  * key
+
+### ext
+ * 概要
+  * メッセージキューに格納したメッセージの実行時間を延長します。
+ * パラメータ一覧
+  * key
+  * time
+
+
+
+Example
 -------
 10秒後にワーカーに配置した"Sample"モジュールを実行させ、パラメータとして"parameter sample"という文字列を渡す場合は、以下の様な記述で実装ることができます。
 
@@ -65,16 +102,16 @@ Conifguration
 Plan
 ----------
  * メッセージキューの永続化
- * 複数ワーカーを起動させた場合、指定したワーカーでキュー内容を取り出せる様にする
 
 
 Features and Changes
 ----------
-
+ * 2012-4-15
+  * メッセージ登録時のワーカー選択機能実装
 
 Helping Out
 ----------
-
+ * -
 
 Thanks
 ------
