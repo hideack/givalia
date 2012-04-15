@@ -95,6 +95,10 @@ module Givalia
                                 @@jobKey[passjob['key']] = waketime
                             end
 
+                            if !passjob['target_worker'].nil?
+                                job.target_worker = passjob['target_worker']
+                            end
+
                             if @@jobSchedules.has_key?(waketime)
                                 @@jobSchedules[waketime] << job 
                             else
@@ -181,9 +185,12 @@ module Givalia
                             if !job.key.nil?
                                 @@jobKey.delete(job.key)
                             end
+
+                            worker = "worker-#{job.target_worker}"
+
+                            @@ts.write([worker, [job]])
                         }
-                        
-                        @@ts.write(["worker", jobs])
+
                     end
                 end
 

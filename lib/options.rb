@@ -9,6 +9,7 @@ module Givalia
         attr_accessor :main_port
         attr_accessor :sub_port
         attr_accessor :log_path
+        attr_accessor :worker_name
 
         def initialize
             @master_server = "127.0.0.1"
@@ -16,6 +17,7 @@ module Givalia
             @main_port = 12322     #givalia server port
             @sub_port  = 12323     #givalia server subport (druby server)
             @log_path  = nil       #givalia log path
+            @worker_name = "any"   #givalia worker name
         end
     end
 end

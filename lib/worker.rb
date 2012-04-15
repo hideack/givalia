@@ -22,7 +22,7 @@ module Givalia
 
         def run
             loop do
-                tuple = @@ts.take(["worker", nil])
+                tuple = @@ts.take(["worker-#{@options.worker_name}", nil])
 
                 tuple[1].each{|job|
                     @@ts.write(["report", "[worker] job start = module:#{job.module} / params:#{job.params}"])
@@ -65,6 +65,10 @@ module Givalia
 
             optset.on("-w", "--workerport [PORT]") {|v|
                 @options.sub_port = v
+            }
+
+            optset.on("-n", "--workername [Worker name]") {|v|
+                @options.worker_name = v
             }
 
             optset.on_tail("-h", "--help", "Show this message") {
